@@ -9,7 +9,7 @@ import zarpados from '@/assets/zarpados-22.png'
 import { withWholesale } from "../utils/navigation.js";
 import { formatPrice } from "../utils/price.js";
 import { Search, ShoppingCart } from "lucide-react";
-import shatha from '@/assets/logo_attar_prueba.png'
+import shatha from '@/assets/logo_sisi_lean_si.png'
 import { PERFUME_CATEGORY_DEFINITIONS } from "../utils/perfumeCategories.js";
 
 const API = import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, "") || "";
@@ -246,6 +246,8 @@ export default function Header() {
     // 5: "🌸",
     // 7: "🏷️",
   };
+
+
   const productCategories = PERFUME_CATEGORY_DEFINITIONS.map((category) => ({
     name: category.name,
     route: `/categoria/${category.slug}`,

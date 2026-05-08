@@ -1,9 +1,9 @@
 export const storeConfig = {
-    storeName: " Estilo Fenix Perfumes",
+    storeName: " Riv Perfumes",
 
     branding: {
-        heroTitle: "Fragancias Árabes Exclusivas",
-        heroSubtitle: "Aromas intensos · Calidad premium · Precios accesibles",
+        heroTitle: "",
+        heroSubtitle: "",
         /*       footerText: "Perfumes árabes originales en Argentina.", */
     },
 
@@ -14,29 +14,28 @@ export const storeConfig = {
     },
 
     contact: {
-        whatsapp: "5493534793366",
+        whatsapp: "5492645645523",
         whatsappMessage: "Hola, quiero consultar por un perfume del catálogo",
-        whatsappDisplay: "+56 9 6407 7278",
+        whatsappDisplay: "+54 9 264 564 5523",
 
-        instagram: "https://www.instagram.com/danna_decants_puq/",
-        instagramDisplay: "@danna_decants_puq",
-
-        email: "nicolasdelfino585@gmail.com",
-        /*  emailDisplay: "nicolasdelfino585@gmail.com", */
+        instagram: "https://www.instagram.com/rivperfumesar/",
+        instagramDisplay: "@rivperfumesar",
+        emailDisplay: "rivperfumesar@gmail.com",
     },
 
     business: {
-        address: "Stand Mall Espacio Urbano Pionero",
-        city: "Segundo piso (casi al lado de Tarragona)",
-        hours: "Lunes a Sábado 10:30–20:30 - Domingo 11:00–20:00",
+        address: "Galería Rivadavia\nLocal 28",
+        city: "San Juan, Argentina",
+        hours: "Lunes a Sábados 9:30 a 13:00 y de 17:30 a 21:00",
     },
 
     media: {
-        heroImage: "f3_si.png",
-        footerLogo: "logo_danna.jpeg",
+        heroImage: "banner_riv_si.png",
+        heroImage2: "banner_cel_lean.png",
+        footerLogo: "logo_sisi_lean_si.png",
     },
 
     map: {
-        embed: "https://www.google.com/maps?q=-53.1315202,-70.9090699&z=17&output=embed",
-    }
+        embed: "https://www.google.com/maps?q=-31.5368304,-68.5221501&z=17&output=embed",
+    },
 };

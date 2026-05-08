@@ -26,6 +26,7 @@ export default function InicioNuevo() {
     const location = useLocation();
     const navigate = useNavigate();
     const banner = `/${storeConfig.media.heroImage}`;
+    const banner2 = `/${storeConfig.media.heroImage2}`;
 
     useEffect(() => {
         if (actions?.fetchProducts) {
@@ -104,22 +105,22 @@ export default function InicioNuevo() {
        ========================= */}
                 <div className="lg:hidden">
                     {/* IMAGEN SIN ALTURA FIJA */}
-                    <div className="w-full">
-                        <img
-                            src={banner}
-                            alt="banner"
-                            className="
+
+                    <img
+                        src={banner2}
+                        alt="banner"
+                        className="
                 w-full
                 h-auto
                 object-contain   /* 🔥 CLAVE: NO RECORTA */
                 brightness-110
                 saturate-110
                 "
-                        />
-                    </div>
+                    />
+
 
                     {/* BLOQUE NEGRO DINÁMICO */}
-                    <div className="
+                    {/*  <div className="
             bg-black
             px-5
             py-6
@@ -128,9 +129,9 @@ export default function InicioNuevo() {
             
 
             flex flex-col items-center justify-center
-        ">
+        "> */}
 
-                        <h1 className="
+                    {/*  <h1 className="
                 text-[22px]
                 sm:text-[24px]
                 leading-tight
@@ -140,10 +141,10 @@ export default function InicioNuevo() {
                 tracking-wide
                 mb-3
             ">
-                            {storeConfig.branding.heroTitle}
-                        </h1>
+                        {storeConfig.branding.heroTitle}
+                    </h1>
 
-                        <p className="
+                    <p className="
                 text-[14px]
                 sm:text-[15px]
                 leading-relaxed
@@ -154,11 +155,11 @@ export default function InicioNuevo() {
                 sm:max-w-[420px]
                 mx-auto
             ">
-                            {storeConfig.branding.heroSubtitle}
-                        </p>
-
-                    </div>
+                        {storeConfig.branding.heroSubtitle}
+                    </p>
+ */}
                 </div>
+                {/*    </div> */}
 
                 {/* =========================
        DESKTOP (NO TOCAR)
@@ -175,24 +176,24 @@ export default function InicioNuevo() {
 
                     <div
                         className="
-                absolute inset-0
-                bg-no-repeat
+        absolute inset-0
+        bg-no-repeat
 
-                md:bg-[length:100vw_auto]
-                md:bg-[position:center_-100px]
+        md:bg-[length:100vw_auto]
+        md:bg-[position:center_top]
 
-                lg:bg-[length:100vw_auto]
-                lg:bg-[position:center_-200px]
+        lg:bg-[length:100vw_auto]
+        lg:bg-[position:center_top]
 
-                xl:bg-[length:100vw_auto]
-                xl:bg-[position:center_-250px]
+        xl:bg-cover
+        xl:bg-[position:center_top]
 
-                2xl:bg-[length:100vw_auto]
-                2xl:bg-[position:center_-80px]
+        2xl:bg-[length:100vw_auto]
+        2xl:bg-[position:center_top]
 
-                brightness-110
-                saturate-110
-            "
+        brightness-110
+        saturate-110
+    "
                         style={{ backgroundImage: `url(${banner})` }}
                     />
 
@@ -204,7 +205,7 @@ export default function InicioNuevo() {
             pb-12
         ">
 
-                        <h1 className="
+                        {/*  <h1 className="
                 text-3xl
                 font-serif
                 font-semibold
@@ -222,7 +223,7 @@ export default function InicioNuevo() {
                 tracking-wide
             ">
                             {storeConfig.branding.heroSubtitle}
-                        </p>
+                        </p> */}
 
                     </div>
                 </div>
@@ -328,13 +329,13 @@ shadow-lg shadow-amber-500/20
                             ¡Contactanos!
                         </span>
 
-                        <h2 className="mt-4 text-4xl sm:text-5xl font-extrabold text-gray-900">
-                            {ADDRESS.split(",")[0]}
+                        <h2 className="mt-4 text-4xl sm:text-5xl font-extrabold text-gray-900 whitespace-pre-line">
+                            {ADDRESS}
                         </h2>
-                        <p className="mt-2 text-lg text-gray-500">
-                            {ADDRESS_CITY.replace(ADDRESS_CITY.split(",")[0] + ", ", "")}
+                        <p className="mt-2 text-lg text-gray-500 whitespace-pre-line">
+                            {ADDRESS_CITY}
                         </p>
-                        <p className="mt-2 text-lg text-gray-500">Punta Arenas</p>
+                        {/*   <p className="mt-2 text-lg text-gray-500">Punta Arenas</p> */}
 
                         <p className="mt-2 text-gray-600">{HOURS}</p>
 
@@ -389,7 +390,7 @@ shadow-lg shadow-amber-500/20
                             </div>
                         </div>
                         <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ADDRESS)}`}
+                            href="https://www.google.com/maps/search/?api=1&query=Av.+Jos%C3%A9+Ignacio+de+la+Roza+Este+270+San+Juan+Argentina"
                             target="_blank"
                             rel="noreferrer"
                             className="mt-3 inline-block text-sm text-purple-600 hover:text-purple-800"
@@ -410,9 +411,9 @@ shadow-lg shadow-amber-500/20
   `}</style>
             </section>
             <section className="relative bg-white py-8 fade-in-section border-y border-gray-200">
-                {/*  <div className="relative z-10 overflow-hidden whitespace-nowrap mx-0 md:mx-[104px]">
+                <div className="relative z-10 overflow-hidden whitespace-nowrap mx-0 md:mx-[104px]">
                     <div className="brands-track will-change-transform">
-                 
+
                         <div className="brands-group">
                             <div className="brand-container">
                                 <img src={afnan} alt="Afnan" className="brand-img" />
@@ -446,7 +447,7 @@ shadow-lg shadow-amber-500/20
                             </div>
                         </div>
 
-                    
+
                         <div className="brands-group" aria-hidden="true">
                             <div className="brand-container">
                                 <img src={afnan} alt="Afnan" className="brand-img" />
@@ -481,7 +482,7 @@ shadow-lg shadow-amber-500/20
                         </div>
                     </div>
                 </div>
- */}
+
                 <style>{`
         .brands-track {
             display: inline-flex;

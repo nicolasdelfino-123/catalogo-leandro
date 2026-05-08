@@ -170,10 +170,12 @@ const Layout = () => {
           {/* Productos (NUEVO GRID) */}
           <Route path="/products" element={<ProductGridNuevo />} />
           <Route path="/categoria/:slug" element={<ProductGridNuevo />} />
+          <Route path="/unisex" element={<Navigate to="/categoria/unisex" replace />} />
 
           {/* Mayorista productos (NUEVO GRID) */}
           {/*     <Route path="/mayorista/products" element={<ProductGridNuevo />} /> */}
           <Route path="/mayorista/categoria/:slug" element={<Mayorista />} />
+          <Route path="/mayorista/unisex" element={<Navigate to="/mayorista/categoria/unisex" replace />} />
 
           {/* 🔥 RUTA BASE MAYORISTA (CLAVE) */}
           {/* Mayorista landing */}
