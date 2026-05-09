@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import Spinner from "../assets/danna_spinner.gif";
+import Spinner from "../assets/spinner_lean.gif";
 
 const GlobalSpinner = ({ appReady = false }) => {
     const [visible, setVisible] = useState(true);
