@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.dannadecants.catalogoweb.ar/sitemap.xml
+Sitemap: https://www.rivperfumes.catalogoweb.ar/sitemap.xml
