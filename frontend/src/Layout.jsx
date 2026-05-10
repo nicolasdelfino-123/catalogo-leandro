@@ -1,7 +1,8 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Route, Routes, useLocation, Navigate } from "react-router-dom";
 import injectContext, { Context } from "./js/store/appContext.jsx";
 import { setWholesaleMode } from "./utils/wholesaleMode.js";
+import { storeConfig } from "./config/storeConfig.js";
 
 //imports nuevos componentes
 import ProductDetailNuevo from "./components/ui/product/ProductDetailNuevo.jsx";
@@ -108,6 +109,16 @@ const ConditionalFloatingButtons = () => {
 const Layout = () => {
   const { store, actions } = useContext(Context);
   const [loading, setLoading] = useState(true);
+  const inicioHeroImages = useMemo(() => {
+    const isInicioPage = ["/", "/inicio", "/mayorista/inicio"].includes(window.location.pathname);
+
+    if (!isInicioPage) return [];
+
+    return [
+      `/${storeConfig.media.heroImage}`,
+      `/${storeConfig.media.heroImage2}`,
+    ];
+  }, []);
 
   /*   const inicioImages = [
       heroBg, banner1, recargables, celu,
@@ -144,7 +155,7 @@ const Layout = () => {
 
   return (
     <div>
-      <GlobalSpinner appReady={!loading} />
+      <GlobalSpinner appReady={!loading} criticalImages={inicioHeroImages} />
       <BrowserRouter>
 
         {/* 🔥 Detecta si estamos en /mayorista */}
