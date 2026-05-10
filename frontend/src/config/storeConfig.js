@@ -32,7 +32,7 @@ export const storeConfig = {
     media: {
         heroImage: "banner_riv_si_optimized.webp",
         heroImage2: "banner_cel_lean_optimized.webp",
-        footerLogo: "logo_sisi_lean_si.png",
+        footerLogo: "logo_sisi_lean_si_optimized.webp",
     },
 
     map: {

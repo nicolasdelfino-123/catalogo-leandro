@@ -9,10 +9,11 @@ import zarpados from '@/assets/zarpados-22.png'
 import { withWholesale } from "../utils/navigation.js";
 import { formatPrice } from "../utils/price.js";
 import { Search, ShoppingCart } from "lucide-react";
-import shatha from '@/assets/logo_sisi_lean_si.png'
 import { PERFUME_CATEGORY_DEFINITIONS } from "../utils/perfumeCategories.js";
+import { storeConfig } from "../config/storeConfig.js";
 
 const API = import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, "") || "";
+const HEADER_LOGO = `/${storeConfig.media.footerLogo}`;
 
 const normalizeImagePath = (u = "") => {
   if (!u) return "";
@@ -338,8 +339,11 @@ export default function Header() {
             <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
               <Link to={withWholesale("/inicio")} aria-label="Ir al inicio" className="pointer-events-auto">
                 <img
-                  src={shatha}
+                  src={HEADER_LOGO}
                   alt="Shatha"
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="sync"
                   className="mt-[-0px] md:mt-[-0px] h-[55px] md:h-[55px] object-contain transition-all duration-300"
                 />
               </Link>

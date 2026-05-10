@@ -109,13 +109,17 @@ const ConditionalFloatingButtons = () => {
 const Layout = () => {
   const { store, actions } = useContext(Context);
   const [loading, setLoading] = useState(true);
-  const inicioHeroImages = useMemo(() => {
+  const criticalImages = useMemo(() => {
     const isInicioPage = ["/", "/inicio", "/mayorista/inicio"].includes(window.location.pathname);
+    const images = [`/${storeConfig.media.footerLogo}`];
 
-    if (!isInicioPage) return [];
+    if (!isInicioPage) return images;
 
     const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
-    return [`/${isDesktop ? storeConfig.media.heroImage : storeConfig.media.heroImage2}`];
+    return [
+      ...images,
+      `/${isDesktop ? storeConfig.media.heroImage : storeConfig.media.heroImage2}`,
+    ];
   }, []);
 
   /*   const inicioImages = [
@@ -153,7 +157,7 @@ const Layout = () => {
 
   return (
     <div>
-      <GlobalSpinner appReady={!loading} criticalImages={inicioHeroImages} />
+      <GlobalSpinner appReady={!loading} criticalImages={criticalImages} />
       <BrowserRouter>
 
         {/* 🔥 Detecta si estamos en /mayorista */}
