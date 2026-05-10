@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useLayoutEffect } from "react";
+import React, { useContext, useEffect, useLayoutEffect, useRef } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Context } from "../js/store/appContext.jsx";
 import ProductCardPerfumes from "../components/ui/cards/ProductCardPerfumes.jsx";
@@ -27,11 +27,59 @@ export default function InicioNuevo() {
     const navigate = useNavigate();
     const banner = `/${storeConfig.media.heroImage}`;
     const banner2 = `/${storeConfig.media.heroImage2}`;
+    const imagesLoadedRef = useRef(false);
 
     useEffect(() => {
         if (actions?.fetchProducts) {
             actions.fetchProducts();
         }
+    }, [actions]);
+
+    // 🔥 Monitorear carga de imágenes críticas (hero + productos)
+    useEffect(() => {
+        const checkCriticalImages = () => {
+            if (imagesLoadedRef.current) return;
+
+            // Imágenes críticas: hero banner + banner2 + primeras tarjetas de productos
+            const criticalSelectors = [
+                `img[src*="heroImage"]`,
+                `img[src*="heroImage2"]`,
+                `[data-product-id] img`, // Imágenes de productos en cards
+            ];
+
+            const criticalImages = Array.from(document.querySelectorAll(criticalSelectors.join(", ")))
+                .slice(0, 8); // Top 8 imágenes (hero + primeros 6 productos)
+
+            if (criticalImages.length === 0) {
+                // Si aún no existen en el DOM, esperar
+                setTimeout(checkCriticalImages, 100);
+                return;
+            }
+
+            const allCriticalLoaded = criticalImages.every((img) => {
+                if (img.tagName === "IMG") {
+                    return img.complete && (img.naturalHeight > 0 || img.naturalWidth > 0 || img.src.includes("data:"));
+                }
+                return true;
+            });
+
+            if (allCriticalLoaded) {
+                imagesLoadedRef.current = true;
+                // Disparar evento para que GlobalSpinner se cierre
+                window.dispatchEvent(new Event("inicioImagesReady"));
+                return;
+            }
+
+            // Reintenta después de 150ms
+            setTimeout(checkCriticalImages, 150);
+        };
+
+        // Esperar un poco a que el DOM se renderice completamente
+        const timeoutId = setTimeout(checkCriticalImages, 300);
+
+        return () => {
+            clearTimeout(timeoutId);
+        };
     }, []);
 
     const ADDRESS = storeConfig.business.address;

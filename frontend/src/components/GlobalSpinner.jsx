@@ -4,46 +4,66 @@ import Spinner from "../assets/spinner_lean.gif";
 const GlobalSpinner = ({ appReady = false }) => {
     const [visible, setVisible] = useState(true);
     const spinnerImgRef = useRef(null);
+    const cancelledRef = useRef(false);
 
     useEffect(() => {
         if (!appReady) {
             setVisible(true);
+            cancelledRef.current = false;
             return;
         }
 
-        let cancelled = false;
         let pollTimeout = null;
         let fallbackTimeout = null;
+        cancelledRef.current = false;
 
         const checkImages = () => {
-            if (cancelled) return;
+            if (cancelledRef.current) return;
 
             const images = Array.from(document.images).filter(
                 (img) => img !== spinnerImgRef.current
             );
 
-            const allLoaded = images.every((img) => img.complete);
+            // Filtrar imágenes que tienen un tamaño natural (cargadas correctamente)
+            const allLoaded = images.every((img) => {
+                return img.complete && (img.naturalHeight > 0 || img.naturalWidth > 0 || img.src.includes("data:"));
+            });
 
-            if (allLoaded) {
+            if (allLoaded && images.length > 0) {
                 setTimeout(() => {
-                    if (!cancelled) setVisible(false);
+                    if (!cancelledRef.current) setVisible(false);
                 }, 250);
                 return;
             }
 
-            pollTimeout = window.setTimeout(checkImages, 120);
+            // Esperar más tiempo en la primera carga
+            const delay = images.length === 0 ? 150 : 120;
+            pollTimeout = window.setTimeout(checkImages, delay);
         };
 
+        // Timeout máximo de 10 segundos (más tiempo para conexiones lentas)
         fallbackTimeout = window.setTimeout(() => {
-            if (!cancelled) setVisible(false);
-        }, 8000);
+            if (!cancelledRef.current) {
+                console.warn("GlobalSpinner: Timeout esperando imágenes. Cerrando spinner...");
+                setVisible(false);
+            }
+        }, 10000);
+
+        // Escuchar evento personalizado de InicioNuevo
+        const handleInicioImagesReady = () => {
+            if (!cancelledRef.current) {
+                setVisible(false);
+            }
+        };
+        window.addEventListener("inicioImagesReady", handleInicioImagesReady);
 
         requestAnimationFrame(checkImages);
 
         return () => {
-            cancelled = true;
+            cancelledRef.current = true;
             if (pollTimeout) window.clearTimeout(pollTimeout);
             if (fallbackTimeout) window.clearTimeout(fallbackTimeout);
+            window.removeEventListener("inicioImagesReady", handleInicioImagesReady);
         };
     }, [appReady]);
 
