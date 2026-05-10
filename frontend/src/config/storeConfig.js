@@ -30,8 +30,8 @@ export const storeConfig = {
     },
 
     media: {
-        heroImage: "banner_riv_si.png",
-        heroImage2: "banner_cel_lean.png",
+        heroImage: "banner_riv_si_optimized.webp",
+        heroImage2: "banner_cel_lean_optimized.webp",
         footerLogo: "logo_sisi_lean_si.png",
     },
 

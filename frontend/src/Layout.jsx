@@ -114,10 +114,8 @@ const Layout = () => {
 
     if (!isInicioPage) return [];
 
-    return [
-      `/${storeConfig.media.heroImage}`,
-      `/${storeConfig.media.heroImage2}`,
-    ];
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    return [`/${isDesktop ? storeConfig.media.heroImage : storeConfig.media.heroImage2}`];
   }, []);
 
   /*   const inicioImages = [
