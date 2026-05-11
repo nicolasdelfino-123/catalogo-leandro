@@ -1,21 +1,12 @@
-import json
-import os
 from threading import Lock
 
 from flask import current_app
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 
 from app import db
 
 
 _LOCK = Lock()
-
-
-def _storage_path():
-    configured = current_app.config.get("BEST_SELLERS_FILE")
-    if configured:
-        return configured
-    return os.path.join(current_app.root_path, "best_sellers.json")
 
 
 def _normalize_ids(product_ids):
@@ -33,107 +24,111 @@ def _normalize_ids(product_ids):
     return normalized
 
 
-def _read_legacy_json_ids():
-    path = _storage_path()
-    if not os.path.exists(path):
-        return []
+def _read_flags_fast():
+    try:
+        rows = db.session.execute(text("""
+            SELECT product_id, best_seller_order, home_featured_order
+            FROM best_seller_product
+            WHERE best_seller_order IS NOT NULL
+               OR home_featured_order IS NOT NULL
+            ORDER BY product_id ASC
+        """)).fetchall()
+        best_rows = [
+            (int(row[0]), int(row[1]))
+            for row in rows
+            if row[1] is not None
+        ]
+        home_rows = [
+            (int(row[0]), int(row[2]))
+            for row in rows
+            if row[2] is not None
+        ]
+        best_ids = [product_id for product_id, _ in sorted(best_rows, key=lambda item: (item[1], item[0]))]
+        home_ids = [product_id for product_id, _ in sorted(home_rows, key=lambda item: (item[1], item[0]))]
+        return _normalize_ids(best_ids), _normalize_ids(home_ids)
+    except Exception as exc:
+        db.session.rollback()
+        message = str(exc).lower()
+        if "best_seller_order" not in message and "home_featured_order" not in message:
+            current_app.logger.warning("No se pudieron leer flags nuevos de productos destacados: %s", exc)
+            return [], []
 
     try:
-        with open(path, "r", encoding="utf-8") as fh:
-            data = json.load(fh)
-    except Exception:
-        return []
-
-    ids = data.get("product_ids", []) if isinstance(data, dict) else data
-    return _normalize_ids(ids)
-
-
-def _table_columns():
-    try:
-        return {column["name"] for column in inspect(db.engine).get_columns("best_seller_product")}
-    except Exception:
-        return set()
+        rows = db.session.execute(text("""
+            SELECT product_id, sort_order
+            FROM best_seller_product
+            ORDER BY sort_order ASC, product_id ASC
+        """)).fetchall()
+        legacy_ids = _normalize_ids([row[0] for row in rows])
+        return legacy_ids, legacy_ids[:12]
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.warning("No se pudieron leer flags legacy de productos destacados: %s", exc)
+        return [], []
 
 
-def _ensure_column(name, ddl_type="INTEGER"):
-    if name in _table_columns():
-        return
-    dialect = db.engine.dialect.name
-    if dialect == "postgresql":
-        db.session.execute(text(f"ALTER TABLE best_seller_product ADD COLUMN IF NOT EXISTS {name} {ddl_type}"))
-        return
-    db.session.execute(text(f"ALTER TABLE best_seller_product ADD COLUMN {name} {ddl_type}"))
-
-
-def _ensure_table_and_migrate_legacy_data():
+def _ensure_table_for_write():
     db.session.execute(text("""
         CREATE TABLE IF NOT EXISTS best_seller_product (
             product_id INTEGER PRIMARY KEY,
-            sort_order INTEGER NOT NULL DEFAULT 0,
+            sort_order INTEGER DEFAULT 0,
             best_seller_order INTEGER,
             home_featured_order INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """))
 
-    _ensure_column("best_seller_order", "INTEGER")
-    _ensure_column("home_featured_order", "INTEGER")
-
-    count = db.session.execute(text("SELECT COUNT(*) FROM best_seller_product")).scalar() or 0
-
-    if count == 0:
-        legacy_ids = _read_legacy_json_ids()
-        for idx, product_id in enumerate(legacy_ids):
-            db.session.execute(
-                text("""
-                    INSERT INTO best_seller_product (
-                        product_id,
-                        sort_order,
-                        best_seller_order,
-                        home_featured_order
-                    )
-                    VALUES (
-                        :product_id,
-                        :sort_order,
-                        :best_seller_order,
-                        :home_featured_order
-                    )
-                """),
-                {
-                    "product_id": product_id,
-                    "sort_order": idx,
-                    "best_seller_order": idx,
-                    "home_featured_order": idx if idx < 12 else None,
-                },
-            )
+    dialect = db.engine.dialect.name
+    if dialect == "postgresql":
+        db.session.execute(text("ALTER TABLE best_seller_product ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0"))
+        db.session.execute(text("ALTER TABLE best_seller_product ADD COLUMN IF NOT EXISTS best_seller_order INTEGER"))
+        db.session.execute(text("ALTER TABLE best_seller_product ADD COLUMN IF NOT EXISTS home_featured_order INTEGER"))
+        db.session.execute(text("ALTER TABLE best_seller_product ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
     else:
-        missing_flags = db.session.execute(text("""
-            SELECT COUNT(*)
-            FROM best_seller_product
-            WHERE best_seller_order IS NOT NULL
-               OR home_featured_order IS NOT NULL
-        """)).scalar() or 0
+        for column, ddl in (
+            ("sort_order", "INTEGER DEFAULT 0"),
+            ("best_seller_order", "INTEGER"),
+            ("home_featured_order", "INTEGER"),
+            ("created_at", "TIMESTAMP"),
+        ):
+            try:
+                db.session.execute(text(f"ALTER TABLE best_seller_product ADD COLUMN {column} {ddl}"))
+            except Exception:
+                db.session.rollback()
 
-        if missing_flags == 0:
-            db.session.execute(text("""
-                UPDATE best_seller_product
-                SET best_seller_order = sort_order,
-                    home_featured_order = CASE WHEN sort_order < 12 THEN sort_order ELSE NULL END
-            """))
-
-    _compact_order("best_seller_order")
-    _compact_order("home_featured_order")
+    db.session.execute(text("""
+        UPDATE best_seller_product
+        SET best_seller_order = sort_order
+        WHERE best_seller_order IS NULL
+          AND sort_order IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM best_seller_product
+              WHERE best_seller_order IS NOT NULL
+          )
+    """))
+    db.session.execute(text("""
+        UPDATE best_seller_product
+        SET home_featured_order = sort_order
+        WHERE home_featured_order IS NULL
+          AND sort_order IS NOT NULL
+          AND sort_order < 12
+          AND NOT EXISTS (
+              SELECT 1
+              FROM best_seller_product
+              WHERE home_featured_order IS NOT NULL
+          )
+    """))
     db.session.commit()
 
 
 def _ordered_ids(column):
-    _ensure_table_and_migrate_legacy_data()
     rows = db.session.execute(
         text(f"""
             SELECT product_id
             FROM best_seller_product
             WHERE {column} IS NOT NULL
-            ORDER BY {column} ASC, created_at ASC, product_id ASC
+            ORDER BY {column} ASC, product_id ASC
         """)
     ).fetchall()
     return _normalize_ids([row[0] for row in rows])
@@ -145,7 +140,7 @@ def _compact_order(column):
             SELECT product_id
             FROM best_seller_product
             WHERE {column} IS NOT NULL
-            ORDER BY {column} ASC, created_at ASC, product_id ASC
+            ORDER BY {column} ASC, product_id ASC
         """)
     ).fetchall()
     for idx, row in enumerate(rows):
@@ -159,7 +154,7 @@ def _set_product_flag(product_id, enabled, column):
     product_id = int(product_id)
     with _LOCK:
         try:
-            _ensure_table_and_migrate_legacy_data()
+            _ensure_table_for_write()
             current = db.session.execute(
                 text("SELECT product_id FROM best_seller_product WHERE product_id = :product_id"),
                 {"product_id": product_id},
@@ -215,19 +210,13 @@ def _set_product_flag(product_id, enabled, column):
 
 
 def get_best_seller_ids():
-    try:
-        return _ordered_ids("best_seller_order")
-    except Exception:
-        db.session.rollback()
-        raise
+    best_ids, _ = _read_flags_fast()
+    return best_ids
 
 
 def get_home_featured_ids():
-    try:
-        return _ordered_ids("home_featured_order")
-    except Exception:
-        db.session.rollback()
-        raise
+    _, home_ids = _read_flags_fast()
+    return home_ids
 
 
 def set_product_best_seller(product_id, enabled):
@@ -241,22 +230,7 @@ def set_product_home_featured(product_id, enabled):
 
 
 def attach_best_seller_flags(products):
-    try:
-        best_ids = get_best_seller_ids()
-        home_ids = get_home_featured_ids()
-    except Exception as exc:
-        db.session.rollback()
-        current_app.logger.exception("No se pudieron cargar flags de Mas Vendidos/Inicio: %s", exc)
-        serialized = []
-        for product in products:
-            row = product.serialize()
-            row["is_best_seller"] = False
-            row["best_seller_rank"] = None
-            row["is_home_featured"] = False
-            row["home_featured_rank"] = None
-            serialized.append(row)
-        return serialized
-
+    best_ids, home_ids = _read_flags_fast()
     product_id_set = {product.id for product in products}
     visible_best_ids = [product_id for product_id in best_ids if product_id in product_id_set]
     visible_home_ids = [product_id for product_id in home_ids if product_id in product_id_set]
