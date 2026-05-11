@@ -53,6 +53,12 @@ export default function InicioNuevo() {
     const isWomenFragrance = (product) => getNormalizedCategoryId(product) === 2;
     const isMenFragrance = (product) => getNormalizedCategoryId(product) === 1;
 
+    const selectedBestSellers = allProducts
+        .filter((product) => product?.is_best_seller)
+        .sort((a, b) => Number(a?.best_seller_rank ?? 999999) - Number(b?.best_seller_rank ?? 999999));
+
+    const homeSelectedBestSellers = selectedBestSellers.slice(0, 12);
+
     const womenFeatured = allProducts
         .filter(isWomenFragrance)
         .sort((a, b) => getProductPrice(a) - getProductPrice(b))
@@ -62,11 +68,12 @@ export default function InicioNuevo() {
         .sort((a, b) => getProductPrice(a) - getProductPrice(b))
         .slice(0, 6);
     const selectedFeaturedIds = new Set([...womenFeatured, ...menFeatured].map((p) => p.id));
-    const featuredProducts = [
+    const fallbackFeaturedProducts = [
         ...womenFeatured,
         ...menFeatured,
         ...allProducts.filter((p) => !selectedFeaturedIds.has(p.id)).slice(0, Math.max(0, 12 - (womenFeatured.length + menFeatured.length))),
     ].slice(0, 12);
+    const featuredProducts = homeSelectedBestSellers.length > 0 ? homeSelectedBestSellers : fallbackFeaturedProducts;
 
 
     useLayoutEffect(() => {

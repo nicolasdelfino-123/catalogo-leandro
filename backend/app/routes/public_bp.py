@@ -13,11 +13,30 @@ import os
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from flask import Blueprint, request, jsonify
+from app.best_sellers import attach_best_seller_flags
 
 
 
 
 public_bp = Blueprint('public', __name__)
+
+def _ensure_best_sellers_category_exists():
+    category = Category.query.get(8)
+    if category:
+        return category
+
+    by_name = Category.query.filter_by(name="Mas Vendidos").first()
+    if by_name:
+        return by_name
+
+    category = Category(
+        id=8,
+        name="Mas Vendidos",
+        description="Categoría auto-creada (Mas Vendidos)"
+    )
+    db.session.add(category)
+    db.session.flush()
+    return category
 
 @public_bp.route('/')
 def home():
@@ -53,7 +72,7 @@ def get_products():
             query = query.filter(Product.name.ilike(f'%{search}%'))
         
         products = query.all()
-        return jsonify([product.serialize() for product in products]), 200
+        return jsonify(attach_best_seller_flags(products)), 200
         
     except Exception as e:
         return jsonify({'error': 'Error al obtener productos: ' + str(e)}), 500
@@ -70,7 +89,7 @@ def get_product_by_id(product_id):
         if not product:
             return jsonify({'error': 'Producto no encontrado'}), 404
             
-        return jsonify(product.serialize()), 200
+        return jsonify(attach_best_seller_flags([product])[0]), 200
         
     except Exception as e:
         return jsonify({'error': 'Error al obtener producto: ' + str(e)}), 500
@@ -79,6 +98,8 @@ def get_product_by_id(product_id):
 def get_categories():
     """Obtener todas las categorías"""
     try:
+        _ensure_best_sellers_category_exists()
+        db.session.commit()
         categories = Category.query.all()
         return jsonify([category.serialize() for category in categories]), 200
         
@@ -100,7 +121,7 @@ def get_products_by_category(category_id):
         
         return jsonify({
             'category': category.serialize(),
-            'products': [product.serialize() for product in products]
+            'products': attach_best_seller_flags(products)
         }), 200
         
     except Exception as e:

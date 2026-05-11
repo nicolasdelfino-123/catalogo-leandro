@@ -2,6 +2,7 @@ export const PERFUME_CATEGORY_DEFINITIONS = [
     { id: 1, name: "Masculinos", slug: "masculinos" },
     { id: 2, name: "Femeninos", slug: "femeninos" },
     { id: 3, name: "Unisex", slug: "unisex" },
+    { id: 8, name: "Mas Vendidos", slug: "mas-vendidos" },
 ];
 
 export const PERFUME_CATEGORY_NAMES = PERFUME_CATEGORY_DEFINITIONS.map((category) => category.name);
@@ -14,6 +15,7 @@ export const CATEGORY_ID_TO_NAME = {
     5: "Femeninos",
     6: "Masculinos",
     7: "Masculinos",
+    8: "Mas Vendidos",
 };
 
 export const CATEGORY_NAME_TO_ID = {
@@ -35,6 +37,7 @@ export const CATEGORY_NAME_TO_ID = {
     "Body splash victoria secret": 2,
     "Body Splash Victoria Secret": 2,
     Unisex: 3,
+    "Mas Vendidos": 8,
 };
 
 export const LEGACY_CATEGORY_NAME_TO_CURRENT = {
@@ -52,12 +55,14 @@ export const LEGACY_CATEGORY_NAME_TO_CURRENT = {
     "Body Splash Victoria Secret": "Femeninos",
     "Perfumes de Diseñador": "Masculinos",
     "Perfumes de Disenador": "Masculinos",
+    "Mas Vendidos": "Mas Vendidos",
 };
 
 export const SLUG_TO_NAME = {
     masculinos: "Masculinos",
     femeninos: "Femeninos",
     unisex: "Unisex",
+    "mas-vendidos": "Mas Vendidos",
     "perfumes-masculinos": "Masculinos",
     perfumes: "Masculinos",
     "vapes-desechables": "Masculinos",
@@ -73,6 +78,7 @@ export const SLUG_TO_ID = {
     masculinos: 1,
     femeninos: 2,
     unisex: 3,
+    "mas-vendidos": 8,
     "perfumes-masculinos": 1,
     perfumes: 1,
     "vapes-desechables": 1,
@@ -103,6 +109,7 @@ export const NAME_TO_SLUG = {
     "Body splash victoria secret": "femeninos",
     "Body Splash Victoria Secret": "femeninos",
     Unisex: "unisex",
+    "Mas Vendidos": "mas-vendidos",
 };
 
 export const mapCategoryIdFromName = (value = "") => {

@@ -16,6 +16,7 @@ from flask import Blueprint, request, jsonify, current_app, url_for
 import os, io, hashlib, uuid
 from app.models import Order, OrderItem  # asegurate que esté arriba también
 from flask import redirect
+from app.best_sellers import attach_best_seller_flags, set_product_best_seller
 
 
 
@@ -32,6 +33,7 @@ CATEGORY_ID_TO_NAME = {
     5: "Body splash victoria secret",
     6: "Perfumes",  # compatibilidad legacy
     7: "Perfumes de Diseñador",
+    8: "Mas Vendidos",
 }
 
 def _ensure_category_exists(category_id: int):
@@ -218,6 +220,8 @@ def create_product():
         )
         db.session.add(product)
         db.session.commit()
+        if 'is_best_seller' in data:
+            set_product_best_seller(product.id, bool(data.get('is_best_seller')))
         return jsonify({'message': 'Producto creado exitosamente', 'product': product.serialize()}), 201
 
     except Exception as e:
@@ -321,6 +325,8 @@ def update_product(product_id):
                 product.stock = _sum_volume_stock(product.volume_options or [])
         product.created_at = now_cba_naive()
         db.session.commit()
+        if 'is_best_seller' in data:
+            set_product_best_seller(product.id, bool(data.get('is_best_seller')))
         return jsonify({'message': 'Producto actualizado exitosamente', 'product': product.serialize()}), 200
     except Exception as e:
         db.session.rollback()
@@ -361,8 +367,10 @@ def get_all_products_admin():
         return jsonify({'error': 'Acceso denegado. Se requieren permisos de administrador.'}), 403
     
     try:
+        _ensure_category_exists(8)
+        db.session.commit()
         products = Product.query.all()  # Incluye productos inactivos
-        return jsonify([product.serialize() for product in products]), 200
+        return jsonify(attach_best_seller_flags(products)), 200
         
     except Exception as e:
         return jsonify({'error': f'Error al obtener productos: {str(e)}'}), 500

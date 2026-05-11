@@ -263,9 +263,16 @@ export default function ProductGridNuevo({ category, hideFilters = false }) {
     // -----------------------------
     const categoryProducts = useMemo(() => {
         const products = store.products || [];
+        const isBestSellersCategory = currentSlug === "mas-vendidos" || Number(currentCategoryId) === 8;
 
         // Home / destacados
         if (hideFilters && !currentCategoryId) return products.slice(0, 12);
+
+        if (isBestSellersCategory) {
+            return products
+                .filter((p) => p?.is_best_seller || getNormalizedCategoryId(p) === 8)
+                .sort((a, b) => Number(a?.best_seller_rank ?? 999999) - Number(b?.best_seller_rank ?? 999999));
+        }
 
         // Todos
         if (!currentCategoryId) return products;

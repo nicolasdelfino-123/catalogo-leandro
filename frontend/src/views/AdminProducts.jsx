@@ -481,6 +481,52 @@ export default function AdminProducts() {
         }
     }
 
+    const isBestSellerFeatured = (product) =>
+        Boolean(product?.is_best_seller) && Number(product?.best_seller_rank ?? 999999) < 12;
+
+    const toggleBestSeller = async (product) => {
+        const nextValue = !product?.is_best_seller;
+        try {
+            const res = await fetch(`${API}/admin/products/${product.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ is_best_seller: nextValue }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(`No se pudo actualizar Mas Vendidos: ${data?.error || res.statusText}`);
+                return;
+            }
+
+            setProducts((prev) => {
+                const currentIds = prev
+                    .filter((item) => item?.is_best_seller)
+                    .sort((a, b) => Number(a?.best_seller_rank ?? 999999) - Number(b?.best_seller_rank ?? 999999))
+                    .map((item) => item.id);
+                const nextIds = nextValue
+                    ? [...currentIds.filter((id) => id !== product.id), product.id]
+                    : currentIds.filter((id) => id !== product.id);
+                const rankById = new Map(nextIds.map((id, idx) => [id, idx]));
+
+                return prev.map((item) => {
+                    const rank = rankById.get(item.id);
+                    return {
+                        ...item,
+                        is_best_seller: rank !== undefined,
+                        best_seller_rank: rank ?? null,
+                        is_home_featured: rank !== undefined && rank < 12,
+                    };
+                });
+            });
+        } catch (error) {
+            console.error(error);
+            alert("Error actualizando Mas Vendidos");
+        }
+    };
+
     useEffect(() => {
         fetchAll()
     }, [])
@@ -1110,9 +1156,11 @@ export default function AdminProducts() {
             p.name?.toLowerCase().includes(q.toLowerCase()) ||
             p.brand?.toLowerCase().includes(q.toLowerCase());
 
+        const selectedCategoryKey = normalizeCategoryLabel(selectedCategory);
         const matchesCategory =
             selectedCategory === "Todos" ||
-            normalizeCategoryLabel(ID_TO_CATEGORY_NAME[p.category_id]) === normalizeCategoryLabel(selectedCategory); // 👈
+            (selectedCategoryKey === "mas vendidos" && (Boolean(p?.is_best_seller) || Number(p?.category_id) === 8)) ||
+            normalizeCategoryLabel(ID_TO_CATEGORY_NAME[p.category_id]) === selectedCategoryKey; // 👈
 
         const isActive = Boolean(p?.is_active);
         const matchesStatus =
@@ -1285,6 +1333,7 @@ export default function AdminProducts() {
                     onClick={() => setForm({
                         category_id: 1,
                         is_active: true,
+                        is_best_seller: false,
 
                         image_url: "",
                         image_urls: [],
@@ -1443,6 +1492,7 @@ export default function AdminProducts() {
                             <th className="hidden p-2 md:table-cell">Stock</th>
                             <th className="hidden p-2 md:table-cell">Categoría</th>
                             {/*  <th className="p-2">Sabores</th> */}
+                            <th className="hidden p-2 md:table-cell">Mas Vendidos</th>
                             <th className="hidden p-2 md:table-cell">Estado</th>
                             <th className="p-2"></th>
                         </tr>
@@ -1460,8 +1510,12 @@ export default function AdminProducts() {
                                 Number.isFinite(Number(selectedOption?.stock))
                                     ? Number(selectedOption.stock)
                                     : (Number.isFinite(Number(p?.stock)) ? Number(p.stock) : 0);
+                            const bestSellerFeatured = isBestSellerFeatured(p);
+                            const bestSellerColor = p?.is_best_seller
+                                ? (bestSellerFeatured ? "#2563eb" : "#16a34a")
+                                : "#9ca3af";
                             const isMobileExpanded = expandedMobileProductId === p.id;
-                            const tableColSpan = budgetMode ? 13 : 11;
+                            const tableColSpan = budgetMode ? 14 : 12;
 
                             return (
                                 <Fragment key={p.id}>
@@ -1658,6 +1712,27 @@ export default function AdminProducts() {
                                             )}
                                         </td>
                                         <td className="hidden p-2 text-center md:table-cell">{ID_TO_CATEGORY_NAME[p.category_id]}</td>
+                                        <td className="hidden p-2 text-center md:table-cell">
+                                            <label className="inline-flex items-center justify-center gap-2 text-xs font-medium">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={Boolean(p?.is_best_seller)}
+                                                    onChange={() => toggleBestSeller(p)}
+                                                    className="h-5 w-5 cursor-pointer"
+                                                    style={{ accentColor: bestSellerColor }}
+                                                    title={
+                                                        p?.is_best_seller
+                                                            ? (bestSellerFeatured ? "Sale en Inicio y Mas Vendidos" : "Sale en Mas Vendidos")
+                                                            : "Agregar a Mas Vendidos"
+                                                    }
+                                                />
+                                                {p?.is_best_seller && (
+                                                    <span style={{ color: bestSellerColor }}>
+                                                        {bestSellerFeatured ? "Inicio" : "Mas Vendidos"}
+                                                    </span>
+                                                )}
+                                            </label>
+                                        </td>
                                         <td className="hidden p-2 text-center md:table-cell">
                                             {/* Toggle visual Estado con aviso solo en filtro activos/inactivos */}
                                             <button
@@ -1860,6 +1935,23 @@ export default function AdminProducts() {
                                                     <div>
                                                         <div className="text-xs uppercase tracking-wide text-gray-500">Categoria</div>
                                                         <div className="mt-1">{ID_TO_CATEGORY_NAME[p.category_id]}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs uppercase tracking-wide text-gray-500">Mas Vendidos</div>
+                                                        <label className="mt-1 inline-flex items-center gap-2 text-xs font-medium">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={Boolean(p?.is_best_seller)}
+                                                                onChange={() => toggleBestSeller(p)}
+                                                                className="h-5 w-5 cursor-pointer"
+                                                                style={{ accentColor: bestSellerColor }}
+                                                            />
+                                                            <span style={{ color: bestSellerColor }}>
+                                                                {p?.is_best_seller
+                                                                    ? (bestSellerFeatured ? "Inicio" : "Mas Vendidos")
+                                                                    : "No"}
+                                                            </span>
+                                                        </label>
                                                     </div>
                                                     <div>
                                                         <div className="text-xs uppercase tracking-wide text-gray-500">Desc. corta</div>
@@ -2523,6 +2615,15 @@ export default function AdminProducts() {
                                 onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
                             />
                             Producto activo
+                        </label>
+
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                checked={Boolean(form.is_best_seller)}
+                                onChange={(e) => setForm({ ...form, is_best_seller: e.target.checked })}
+                            />
+                            Mas Vendidos
                         </label>
 
                         <div className="flex gap-2 justify-end">
