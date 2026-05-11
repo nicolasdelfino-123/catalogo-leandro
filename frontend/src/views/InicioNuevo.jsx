@@ -7,7 +7,6 @@ import banner from "../assets/banner_arabe.jpg";
 import Asesoria from "../components/Asesoria.jsx";
 import { storeConfig } from "../config/storeConfig";
 import perfumeImg from "../assets/latta_si.webp";
-import { getNormalizedCategoryId } from "../utils/perfumeCategories.js";
 
 import afnan from '../assets/afnan.webp'
 import al from '../assets/al.webp'
@@ -46,34 +45,13 @@ export default function InicioNuevo() {
 
     const MAP_EMBED = storeConfig.map.embed;
     const allProducts = store.products || [];
-    const getProductPrice = (product) => {
-        const price = Number(product?.price);
-        return Number.isFinite(price) ? price : Number.POSITIVE_INFINITY;
-    };
-    const isWomenFragrance = (product) => getNormalizedCategoryId(product) === 2;
-    const isMenFragrance = (product) => getNormalizedCategoryId(product) === 1;
-
     const selectedHomeFeatured = allProducts
         .filter((product) => product?.is_home_featured)
         .sort((a, b) => Number(a?.home_featured_rank ?? 999999) - Number(b?.home_featured_rank ?? 999999));
 
     const homeSelectedFeatured = selectedHomeFeatured.slice(0, 12);
 
-    const womenFeatured = allProducts
-        .filter(isWomenFragrance)
-        .sort((a, b) => getProductPrice(a) - getProductPrice(b))
-        .slice(0, 6);
-    const menFeatured = allProducts
-        .filter(isMenFragrance)
-        .sort((a, b) => getProductPrice(a) - getProductPrice(b))
-        .slice(0, 6);
-    const selectedFeaturedIds = new Set([...womenFeatured, ...menFeatured].map((p) => p.id));
-    const fallbackFeaturedProducts = [
-        ...womenFeatured,
-        ...menFeatured,
-        ...allProducts.filter((p) => !selectedFeaturedIds.has(p.id)).slice(0, Math.max(0, 12 - (womenFeatured.length + menFeatured.length))),
-    ].slice(0, 12);
-    const featuredProducts = homeSelectedFeatured.length > 0 ? homeSelectedFeatured : fallbackFeaturedProducts;
+    const featuredProducts = homeSelectedFeatured;
 
 
     useLayoutEffect(() => {

@@ -48,22 +48,7 @@ def _read_flags_fast():
         return _normalize_ids(best_ids), _normalize_ids(home_ids)
     except Exception as exc:
         db.session.rollback()
-        message = str(exc).lower()
-        if "best_seller_order" not in message and "home_featured_order" not in message:
-            current_app.logger.warning("No se pudieron leer flags nuevos de productos destacados: %s", exc)
-            return [], []
-
-    try:
-        rows = db.session.execute(text("""
-            SELECT product_id, sort_order
-            FROM best_seller_product
-            ORDER BY sort_order ASC, product_id ASC
-        """)).fetchall()
-        legacy_ids = _normalize_ids([row[0] for row in rows])
-        return legacy_ids, legacy_ids[:12]
-    except Exception as exc:
-        db.session.rollback()
-        current_app.logger.warning("No se pudieron leer flags legacy de productos destacados: %s", exc)
+        current_app.logger.warning("No se pudieron leer flags de productos destacados: %s", exc)
         return [], []
 
 
@@ -96,29 +81,6 @@ def _ensure_table_for_write():
             except Exception:
                 db.session.rollback()
 
-    db.session.execute(text("""
-        UPDATE best_seller_product
-        SET best_seller_order = sort_order
-        WHERE best_seller_order IS NULL
-          AND sort_order IS NOT NULL
-          AND NOT EXISTS (
-              SELECT 1
-              FROM best_seller_product
-              WHERE best_seller_order IS NOT NULL
-          )
-    """))
-    db.session.execute(text("""
-        UPDATE best_seller_product
-        SET home_featured_order = sort_order
-        WHERE home_featured_order IS NULL
-          AND sort_order IS NOT NULL
-          AND sort_order < 12
-          AND NOT EXISTS (
-              SELECT 1
-              FROM best_seller_product
-              WHERE home_featured_order IS NOT NULL
-          )
-    """))
     db.session.commit()
 
 
