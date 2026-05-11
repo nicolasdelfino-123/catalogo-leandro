@@ -6,6 +6,7 @@ Este archivo contendrá las rutas administrativas para CRUD de productos
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
+from sqlalchemy import func
 from app.models import Product, Category, User,ProductImage,now_cba_naive
 from flask import current_app, send_from_directory, url_for
 from werkzeug.utils import secure_filename
@@ -16,7 +17,7 @@ from flask import Blueprint, request, jsonify, current_app, url_for
 import os, io, hashlib, uuid
 from app.models import Order, OrderItem  # asegurate que esté arriba también
 from flask import redirect
-from app.best_sellers import attach_best_seller_flags, set_product_best_seller, set_product_home_featured
+from app.best_sellers import attach_best_seller_flags, set_product_best_seller, set_product_home_featured, can_add_home_featured
 
 
 
@@ -190,9 +191,32 @@ def create_product():
                 computed_stock = 0
 
         safe_category = _ensure_category_exists(int(data['category_id']))
+        normalized_name = str(data.get('name') or '').strip()
+
+        existing_product = Product.query.filter(
+            Product.category_id == safe_category.id,
+            func.lower(func.trim(Product.name)) == normalized_name.lower()
+        ).order_by(Product.id.desc()).first()
+
+        if existing_product:
+            if 'is_best_seller' in data:
+                set_product_best_seller(existing_product.id, bool(data.get('is_best_seller')))
+            if 'is_home_featured' in data:
+                try:
+                    set_product_home_featured(existing_product.id, bool(data.get('is_home_featured')))
+                except ValueError as e:
+                    return jsonify({'error': str(e)}), 400
+            return jsonify({
+                'message': 'Producto ya existente',
+                'product': existing_product.serialize(),
+                'duplicate_prevented': True,
+            }), 200
+
+        if bool(data.get('is_home_featured')) and not can_add_home_featured():
+            return jsonify({'error': 'Solo podés seleccionar hasta 12 productos para Inicio'}), 400
 
         product = Product(
-            name=data['name'],
+            name=normalized_name,
             description=data.get('description', ''),
             short_description=data.get('short_description', ''),
             price=float(data['price']),

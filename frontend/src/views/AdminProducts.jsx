@@ -439,6 +439,7 @@ export default function AdminProducts() {
     const [uploadingImage, setUploadingImage] = useState(false);
     const [uploadingImageLabel, setUploadingImageLabel] = useState("");
     const [savingProduct, setSavingProduct] = useState(false);
+    const productSaveInFlightRef = useRef(false);
 
 
 
@@ -907,10 +908,19 @@ export default function AdminProducts() {
     const shouldShowFlavors = () => false
 
     const doSaveProduct = async () => {
+        if (productSaveInFlightRef.current) return;
+        productSaveInFlightRef.current = true;
         setSavingProduct(true);
         try {
             const method = form.id ? "PUT" : "POST"
             const url = form.id ? `${API}/admin/products/${form.id}` : `${API}/admin/products`
+            if (Boolean(form.is_home_featured)) {
+                const homeCount = products.filter((item) => item?.is_home_featured && item.id !== form.id).length;
+                if (homeCount >= 12) {
+                    alert("Solo podés seleccionar hasta 12 productos para Inicio.");
+                    return;
+                }
+            }
 
             // Normalizamos catálogo
             const catalog = (form.flavor_catalog || []).map((x) => ({
@@ -1035,6 +1045,7 @@ export default function AdminProducts() {
             console.error("Error saving product:", error);
             alert("Error al guardar producto");
         } finally {
+            productSaveInFlightRef.current = false;
             setSavingProduct(false);
         }
     };

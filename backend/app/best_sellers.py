@@ -181,6 +181,18 @@ def get_home_featured_ids():
     return home_ids
 
 
+def can_add_home_featured(product_id=None):
+    home_ids = get_home_featured_ids()
+    if product_id is not None:
+        try:
+            product_id = int(product_id)
+        except Exception:
+            product_id = None
+    if product_id is not None and product_id in home_ids:
+        return True
+    return len(home_ids) < 12
+
+
 def set_product_best_seller(product_id, enabled):
     _set_product_flag(product_id, enabled, "best_seller_order")
     return get_best_seller_ids()
