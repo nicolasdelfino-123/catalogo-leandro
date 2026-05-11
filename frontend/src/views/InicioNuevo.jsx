@@ -178,24 +178,13 @@ export default function InicioNuevo() {
 
                     <div
                         className="
-        absolute inset-0
-        bg-no-repeat
-
-        md:bg-[length:100vw_auto]
-        md:bg-[position:center_top]
-
-        lg:bg-[length:100vw_auto]
-        lg:bg-[position:center_top]
-
-        xl:bg-cover
-        xl:bg-[position:center_top]
-
-        2xl:bg-[length:100vw_auto]
-        2xl:bg-[position:center_top]
-
-        brightness-110
-        saturate-110
-    "
+absolute inset-0
+bg-cover
+bg-center
+bg-no-repeat
+brightness-110
+saturate-110
+"
                         style={{ backgroundImage: `url(${banner})` }}
                     />
 
