@@ -36,15 +36,28 @@ const getSelectedMl = (it) => {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
 };
 
+const PAYMENT_METHODS = ["Transferencia", "Efectivo", "Coordinar"];
+
 export default function Cart({ isOpen: controlledOpen, onClose: controlledOnClose }) {
   const { store, actions } = useContext(Context);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [sendingOrder, setSendingOrder] = useState(false);
 
   const [customerData, setCustomerData] = useState(() => {
     const saved = localStorage.getItem("customerData");
-    return saved
-      ? JSON.parse(saved)
-      : { name: "", zone: "", payment: "" };
+    const defaults = { name: "", phone: "", zone: "", payment: "" };
+
+    if (!saved) return defaults;
+
+    try {
+      const parsed = { ...defaults, ...JSON.parse(saved) };
+      return {
+        ...parsed,
+        payment: PAYMENT_METHODS.includes(parsed.payment) ? parsed.payment : "",
+      };
+    } catch {
+      return defaults;
+    }
   });
 
   const navigate = useNavigate();
@@ -163,8 +176,9 @@ export default function Cart({ isOpen: controlledOpen, onClose: controlledOnClos
 
 
   const sendOrder = async () => {
+    if (sendingOrder) return;
 
-    if (!customerData.name || !customerData.zone || !customerData.payment) {
+    if (!customerData.name.trim() || !customerData.phone.trim() || !customerData.zone.trim() || !customerData.payment) {
       alert("Por favor completá tus datos");
       return;
     }
@@ -180,6 +194,7 @@ export default function Cart({ isOpen: controlledOpen, onClose: controlledOnClos
 Datos del cliente:
 
 Nombre: ${customerData.name}
+Teléfono: ${customerData.phone}
 Localidad / Zona: ${customerData.zone}
 Pago: ${customerData.payment}
 
@@ -210,9 +225,18 @@ Pago: ${customerData.payment}
       0
     );
 
-    // 🔹 enviar pedido al backend
+    // ✅ encode SOLO AQUÍ
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(finalMessage)}`;
+    const whatsappWindow = window.open("about:blank", "_blank");
+
+    if (whatsappWindow) {
+      whatsappWindow.opener = null;
+    }
+
+    setSendingOrder(true);
+
     try {
-      await fetch(`/public/orders`, {
+      const response = await fetch(`${API}/public/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -220,10 +244,11 @@ Pago: ${customerData.payment}
         body: JSON.stringify({
           customer_first_name: customerData.name,
           customer_last_name: "",
-          customer_phone: "",
+          customer_phone: customerData.phone,
           shipping_address: {
             city: customerData.zone,
-            label: customerData.zone
+            label: customerData.zone,
+            phone: customerData.phone
           },
           payment_method: customerData.payment,
           order_items: orderItems,
@@ -231,20 +256,29 @@ Pago: ${customerData.payment}
           status: "pendiente"
         })
       });
+
+      if (!response.ok) throw new Error("No se pudo guardar el pedido");
+
+      if (whatsappWindow) {
+        whatsappWindow.location.href = url;
+      } else {
+        window.location.assign(url);
+      }
+
+      actions.clearCart?.();
+      setShowCheckout(false);
     } catch (err) {
       console.error("Error guardando pedido:", err);
+      if (whatsappWindow) {
+        whatsappWindow.location.href = url;
+      } else {
+        window.location.assign(url);
+      }
+      alert("No se pudo guardar el pedido en el panel. El carrito queda intacto por seguridad.");
+    } finally {
+      setSendingOrder(false);
     }
 
-    // ✅ encode SOLO AQUÍ
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(finalMessage)}`;
-
-    window.open(url, "_blank");
-
-    // vaciar carrito
-    actions.clearCart?.();   // o resetCart, según tu store
-    localStorage.removeItem("cart");
-
-    setShowCheckout(false);
   };
 
 
@@ -565,6 +599,16 @@ Pago: ${customerData.payment}
             />
 
             <input
+              type="tel"
+              name="phone"
+              placeholder="Teléfono"
+              value={customerData.phone}
+              onChange={handleCustomerChange}
+              required
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 font-serif tracking-wide focus:outline-none focus:border-gray-900"
+            />
+
+            <input
               type="text"
               name="zone"
               placeholder="Zona / Localidad"
@@ -577,7 +621,7 @@ Pago: ${customerData.payment}
               <p className="text-sm font-serif tracking-wide mb-3 text-gray-800">Forma de pago</p>
 
               <div className="space-y-2 text-sm">
-                {["Transferencia", "Efectivo", "Coordinar"].map(method => {
+                {PAYMENT_METHODS.map(method => {
                   const selected = customerData.payment === method;
 
                   return (
@@ -619,9 +663,10 @@ Pago: ${customerData.payment}
 
               <button
                 onClick={sendOrder}
-                className="px-4 py-2 bg-[#232325] text-white rounded-lg font-serif tracking-wide hover:bg-black transition-colors"
+                disabled={sendingOrder}
+                className="px-4 py-2 bg-[#232325] text-white rounded-lg font-serif tracking-wide hover:bg-black transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Enviar pedido
+                {sendingOrder ? "Guardando..." : "Enviar pedido"}
               </button>
             </div>
           </div>

@@ -198,13 +198,25 @@ from app.models import Order, OrderItem, now_cba_naive
 def create_order():
     try:
         data = request.get_json() or {}
+        shipping_address = data.get("shipping_address") or {}
+        if not isinstance(shipping_address, dict):
+            shipping_address = {"address": str(shipping_address)}
+
+        customer_phone = (
+            data.get("customer_phone")
+            or data.get("phone")
+            or shipping_address.get("phone")
+            or ""
+        )
+        if customer_phone and not shipping_address.get("phone"):
+            shipping_address["phone"] = customer_phone
 
         order = Order(
             total_amount=float(data.get("total_amount") or 0),
             payment_method=data.get("payment_method") or "coordinar",
             customer_first_name=data.get("customer_first_name"),
-            customer_phone=data.get("customer_phone"),
-            shipping_address=data.get("shipping_address") or {},
+            customer_phone=customer_phone,
+            shipping_address=shipping_address,
             status="pending"
         )
 

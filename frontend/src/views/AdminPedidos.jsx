@@ -133,6 +133,7 @@ export default function AdminPedidos() {
             {selected && (() => {
 
                 const items = selected.order_items || selected.items || [];
+                const customerPhone = selected.customer_phone || selected.shipping_address?.phone || "";
                 const getItemBrand = (item) =>
                     item?.product_brand ||
                     item?.brand ||
@@ -185,6 +186,10 @@ export default function AdminPedidos() {
                             <div className="mb-4 space-y-1">
                                 <p>
                                     <strong>Cliente:</strong> {selected.customer_first_name}
+                                </p>
+
+                                <p>
+                                    <strong>Teléfono:</strong> {customerPhone || "Sin teléfono"}
                                 </p>
 
                                 <p>
