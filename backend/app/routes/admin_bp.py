@@ -16,7 +16,7 @@ from flask import Blueprint, request, jsonify, current_app, url_for
 import os, io, hashlib, uuid
 from app.models import Order, OrderItem  # asegurate que esté arriba también
 from flask import redirect
-from app.best_sellers import attach_best_seller_flags, set_product_best_seller
+from app.best_sellers import attach_best_seller_flags, set_product_best_seller, set_product_home_featured
 
 
 
@@ -222,6 +222,11 @@ def create_product():
         db.session.commit()
         if 'is_best_seller' in data:
             set_product_best_seller(product.id, bool(data.get('is_best_seller')))
+        if 'is_home_featured' in data:
+            try:
+                set_product_home_featured(product.id, bool(data.get('is_home_featured')))
+            except ValueError as e:
+                return jsonify({'error': str(e)}), 400
         return jsonify({'message': 'Producto creado exitosamente', 'product': product.serialize()}), 201
 
     except Exception as e:
@@ -327,6 +332,11 @@ def update_product(product_id):
         db.session.commit()
         if 'is_best_seller' in data:
             set_product_best_seller(product.id, bool(data.get('is_best_seller')))
+        if 'is_home_featured' in data:
+            try:
+                set_product_home_featured(product.id, bool(data.get('is_home_featured')))
+            except ValueError as e:
+                return jsonify({'error': str(e)}), 400
         return jsonify({'message': 'Producto actualizado exitosamente', 'product': product.serialize()}), 200
     except Exception as e:
         db.session.rollback()

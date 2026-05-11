@@ -410,7 +410,7 @@ const clearPricingInputs = (state) => ({
 // ----- Componente principal -----
 export default function AdminProducts() {
     const [products, setProducts] = useState([])
-    const categories = PERFUME_CATEGORY_NAMES
+    const categories = ["Inicio", ...PERFUME_CATEGORY_NAMES]
     const [form, setForm] = useState(null)
     const [q, setQ] = useState("")
     const [selectedCategory, setSelectedCategory] = useState("Todos")
@@ -481,11 +481,15 @@ export default function AdminProducts() {
         }
     }
 
-    const isBestSellerFeatured = (product) =>
-        Boolean(product?.is_best_seller) && Number(product?.best_seller_rank ?? 999999) < 12;
-
-    const toggleBestSeller = async (product) => {
-        const nextValue = !product?.is_best_seller;
+    const toggleProductFlag = async (product, field) => {
+        const nextValue = !product?.[field];
+        if (field === "is_home_featured" && nextValue) {
+            const homeCount = products.filter((item) => item?.is_home_featured && item.id !== product.id).length;
+            if (homeCount >= 12) {
+                alert("Solo podés seleccionar hasta 12 productos para Inicio.");
+                return;
+            }
+        }
         try {
             const res = await fetch(`${API}/admin/products/${product.id}`, {
                 method: "PUT",
@@ -493,18 +497,19 @@ export default function AdminProducts() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ is_best_seller: nextValue }),
+                body: JSON.stringify({ [field]: nextValue }),
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                alert(`No se pudo actualizar Mas Vendidos: ${data?.error || res.statusText}`);
+                alert(`No se pudo actualizar el producto: ${data?.error || res.statusText}`);
                 return;
             }
 
             setProducts((prev) => {
+                const rankField = field === "is_home_featured" ? "home_featured_rank" : "best_seller_rank";
                 const currentIds = prev
-                    .filter((item) => item?.is_best_seller)
-                    .sort((a, b) => Number(a?.best_seller_rank ?? 999999) - Number(b?.best_seller_rank ?? 999999))
+                    .filter((item) => item?.[field])
+                    .sort((a, b) => Number(a?.[rankField] ?? 999999) - Number(b?.[rankField] ?? 999999))
                     .map((item) => item.id);
                 const nextIds = nextValue
                     ? [...currentIds.filter((id) => id !== product.id), product.id]
@@ -515,17 +520,19 @@ export default function AdminProducts() {
                     const rank = rankById.get(item.id);
                     return {
                         ...item,
-                        is_best_seller: rank !== undefined,
-                        best_seller_rank: rank ?? null,
-                        is_home_featured: rank !== undefined && rank < 12,
+                        [field]: rank !== undefined,
+                        [rankField]: rank ?? null,
                     };
                 });
             });
         } catch (error) {
             console.error(error);
-            alert("Error actualizando Mas Vendidos");
+            alert("Error actualizando el producto");
         }
     };
+
+    const toggleHomeFeatured = (product) => toggleProductFlag(product, "is_home_featured");
+    const toggleBestSeller = (product) => toggleProductFlag(product, "is_best_seller");
 
     useEffect(() => {
         fetchAll()
@@ -1159,6 +1166,7 @@ export default function AdminProducts() {
         const selectedCategoryKey = normalizeCategoryLabel(selectedCategory);
         const matchesCategory =
             selectedCategory === "Todos" ||
+            (selectedCategoryKey === "inicio" && Boolean(p?.is_home_featured)) ||
             (selectedCategoryKey === "mas vendidos" && (Boolean(p?.is_best_seller) || Number(p?.category_id) === 8)) ||
             normalizeCategoryLabel(ID_TO_CATEGORY_NAME[p.category_id]) === selectedCategoryKey; // 👈
 
@@ -1334,6 +1342,7 @@ export default function AdminProducts() {
                         category_id: 1,
                         is_active: true,
                         is_best_seller: false,
+                        is_home_featured: false,
 
                         image_url: "",
                         image_urls: [],
@@ -1461,6 +1470,15 @@ export default function AdminProducts() {
                     >
                         Limpiar filtros
                     </button>
+                    <div className="text-right text-[11px] text-amber-800/80 leading-tight sm:ml-auto whitespace-nowrap">
+                        {filtered.length} {filtered.length === 1 ? "producto" : "productos"} en página
+                    </div>
+                </div>
+            )}
+
+            {!hasActiveFilters && (
+                <div className="mb-4 text-right text-[11px] text-gray-500 leading-tight">
+                    {filtered.length} {filtered.length === 1 ? "producto" : "productos"} en página
                 </div>
             )}
 
@@ -1510,10 +1528,6 @@ export default function AdminProducts() {
                                 Number.isFinite(Number(selectedOption?.stock))
                                     ? Number(selectedOption.stock)
                                     : (Number.isFinite(Number(p?.stock)) ? Number(p.stock) : 0);
-                            const bestSellerFeatured = isBestSellerFeatured(p);
-                            const bestSellerColor = p?.is_best_seller
-                                ? (bestSellerFeatured ? "#2563eb" : "#16a34a")
-                                : "#9ca3af";
                             const isMobileExpanded = expandedMobileProductId === p.id;
                             const tableColSpan = budgetMode ? 14 : 12;
 
@@ -1713,25 +1727,26 @@ export default function AdminProducts() {
                                         </td>
                                         <td className="hidden p-2 text-center md:table-cell">{ID_TO_CATEGORY_NAME[p.category_id]}</td>
                                         <td className="hidden p-2 text-center md:table-cell">
-                                            <label className="inline-flex items-center justify-center gap-2 text-xs font-medium">
+                                            <div className="inline-flex items-center justify-center gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={Boolean(p?.is_home_featured)}
+                                                    onChange={() => toggleHomeFeatured(p)}
+                                                    className="h-5 w-5 cursor-pointer"
+                                                    style={{ accentColor: "#2563eb" }}
+                                                    title="Mostrar en Inicio"
+                                                    aria-label="Mostrar en Inicio"
+                                                />
                                                 <input
                                                     type="checkbox"
                                                     checked={Boolean(p?.is_best_seller)}
                                                     onChange={() => toggleBestSeller(p)}
                                                     className="h-5 w-5 cursor-pointer"
-                                                    style={{ accentColor: bestSellerColor }}
-                                                    title={
-                                                        p?.is_best_seller
-                                                            ? (bestSellerFeatured ? "Sale en Inicio y Mas Vendidos" : "Sale en Mas Vendidos")
-                                                            : "Agregar a Mas Vendidos"
-                                                    }
+                                                    style={{ accentColor: "#16a34a" }}
+                                                    title="Mostrar en Mas Vendidos"
+                                                    aria-label="Mostrar en Mas Vendidos"
                                                 />
-                                                {p?.is_best_seller && (
-                                                    <span style={{ color: bestSellerColor }}>
-                                                        {bestSellerFeatured ? "Inicio" : "Mas Vendidos"}
-                                                    </span>
-                                                )}
-                                            </label>
+                                            </div>
                                         </td>
                                         <td className="hidden p-2 text-center md:table-cell">
                                             {/* Toggle visual Estado con aviso solo en filtro activos/inactivos */}
@@ -1938,20 +1953,26 @@ export default function AdminProducts() {
                                                     </div>
                                                     <div>
                                                         <div className="text-xs uppercase tracking-wide text-gray-500">Mas Vendidos</div>
-                                                        <label className="mt-1 inline-flex items-center gap-2 text-xs font-medium">
+                                                        <div className="mt-1 inline-flex items-center gap-3">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={Boolean(p?.is_home_featured)}
+                                                                onChange={() => toggleHomeFeatured(p)}
+                                                                className="h-5 w-5 cursor-pointer"
+                                                                style={{ accentColor: "#2563eb" }}
+                                                                title="Mostrar en Inicio"
+                                                                aria-label="Mostrar en Inicio"
+                                                            />
                                                             <input
                                                                 type="checkbox"
                                                                 checked={Boolean(p?.is_best_seller)}
                                                                 onChange={() => toggleBestSeller(p)}
                                                                 className="h-5 w-5 cursor-pointer"
-                                                                style={{ accentColor: bestSellerColor }}
+                                                                style={{ accentColor: "#16a34a" }}
+                                                                title="Mostrar en Mas Vendidos"
+                                                                aria-label="Mostrar en Mas Vendidos"
                                                             />
-                                                            <span style={{ color: bestSellerColor }}>
-                                                                {p?.is_best_seller
-                                                                    ? (bestSellerFeatured ? "Inicio" : "Mas Vendidos")
-                                                                    : "No"}
-                                                            </span>
-                                                        </label>
+                                                        </div>
                                                     </div>
                                                     <div>
                                                         <div className="text-xs uppercase tracking-wide text-gray-500">Desc. corta</div>
@@ -2620,8 +2641,19 @@ export default function AdminProducts() {
                         <label className="flex items-center gap-2">
                             <input
                                 type="checkbox"
+                                checked={Boolean(form.is_home_featured)}
+                                onChange={(e) => setForm({ ...form, is_home_featured: e.target.checked })}
+                                style={{ accentColor: "#2563eb" }}
+                            />
+                            Inicio
+                        </label>
+
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
                                 checked={Boolean(form.is_best_seller)}
                                 onChange={(e) => setForm({ ...form, is_best_seller: e.target.checked })}
+                                style={{ accentColor: "#16a34a" }}
                             />
                             Mas Vendidos
                         </label>

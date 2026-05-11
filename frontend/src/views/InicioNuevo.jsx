@@ -53,11 +53,11 @@ export default function InicioNuevo() {
     const isWomenFragrance = (product) => getNormalizedCategoryId(product) === 2;
     const isMenFragrance = (product) => getNormalizedCategoryId(product) === 1;
 
-    const selectedBestSellers = allProducts
-        .filter((product) => product?.is_best_seller)
-        .sort((a, b) => Number(a?.best_seller_rank ?? 999999) - Number(b?.best_seller_rank ?? 999999));
+    const selectedHomeFeatured = allProducts
+        .filter((product) => product?.is_home_featured)
+        .sort((a, b) => Number(a?.home_featured_rank ?? 999999) - Number(b?.home_featured_rank ?? 999999));
 
-    const homeSelectedBestSellers = selectedBestSellers.slice(0, 12);
+    const homeSelectedFeatured = selectedHomeFeatured.slice(0, 12);
 
     const womenFeatured = allProducts
         .filter(isWomenFragrance)
@@ -73,7 +73,7 @@ export default function InicioNuevo() {
         ...menFeatured,
         ...allProducts.filter((p) => !selectedFeaturedIds.has(p.id)).slice(0, Math.max(0, 12 - (womenFeatured.length + menFeatured.length))),
     ].slice(0, 12);
-    const featuredProducts = homeSelectedBestSellers.length > 0 ? homeSelectedBestSellers : fallbackFeaturedProducts;
+    const featuredProducts = homeSelectedFeatured.length > 0 ? homeSelectedFeatured : fallbackFeaturedProducts;
 
 
     useLayoutEffect(() => {
