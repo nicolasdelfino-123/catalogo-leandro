@@ -75,7 +75,9 @@ def set_product_best_seller(product_id, enabled):
 
 def attach_best_seller_flags(products):
     best_ids = get_best_seller_ids()
-    rank_by_id = {product_id: idx for idx, product_id in enumerate(best_ids)}
+    product_id_set = {product.id for product in products}
+    visible_best_ids = [product_id for product_id in best_ids if product_id in product_id_set]
+    rank_by_id = {product_id: idx for idx, product_id in enumerate(visible_best_ids)}
     best_set = set(best_ids)
 
     serialized = []
