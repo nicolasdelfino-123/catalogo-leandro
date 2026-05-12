@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Context } from "../js/store/appContext.jsx";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { storeConfig } from "../config/storeConfig.js";
 
 
@@ -24,6 +24,33 @@ const toAbsUrl = (u = "") => {
   return `${API}/${u}`;
 };
 
+// BLOQUE WHATSAPP SEGURO A REPLICAR EN OTRAS APPS
+const buildWhatsAppUrl = (phone, message) => {
+  const encodedMessage = encodeURIComponent(message);
+  const userAgent = navigator.userAgent || "";
+
+  if (/android|iphone|ipad|ipod/i.test(userAgent)) {
+    return `whatsapp://send?phone=${phone}&text=${encodedMessage}`;
+  }
+
+  return `https://wa.me/${phone}?text=${encodedMessage}`;
+};
+
+const buildWhatsAppWebUrl = (phone, message) => {
+  const encodedMessage = encodeURIComponent(message);
+  return `https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}&type=phone_number&app_absent=0`;
+};
+
+const openWhatsAppFallbackUrl = (url) => {
+  const whatsappWindow = window.open("about:blank", "_blank");
+  if (whatsappWindow) {
+    whatsappWindow.opener = null;
+    whatsappWindow.location.href = url;
+  } else {
+    window.location.href = url;
+  }
+};
+
 const getTitle = (it) => {
   let base = String(it?.name ?? it?.product?.name ?? it?.title ?? "Producto");
   if (it.selectedFlavor) base += ` (${it.selectedFlavor})`;
@@ -42,6 +69,7 @@ export default function Cart({ isOpen: controlledOpen, onClose: controlledOnClos
   const { store, actions } = useContext(Context);
   const [showCheckout, setShowCheckout] = useState(false);
   const [sendingOrder, setSendingOrder] = useState(false);
+  const [whatsappOrderPrompt, setWhatsappOrderPrompt] = useState(null);
 
   const [customerData, setCustomerData] = useState(() => {
     const saved = localStorage.getItem("customerData");
@@ -178,6 +206,11 @@ export default function Cart({ isOpen: controlledOpen, onClose: controlledOnClos
   const sendOrder = async () => {
     if (sendingOrder) return;
 
+    if (!store.cart || store.cart.length === 0) {
+      alert("Tu carrito está vacío");
+      return;
+    }
+
     if (!customerData.name.trim() || !customerData.phone.trim() || !customerData.zone.trim() || !customerData.payment) {
       alert("Por favor completá tus datos");
       return;
@@ -225,77 +258,67 @@ Pago: ${customerData.payment}
       0
     );
 
-    // ✅ encode SOLO AQUÍ
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(finalMessage)}`;
-    const whatsappWindow = window.open("about:blank", "_blank");
+    const whatsappUrl = buildWhatsAppUrl(phone, finalMessage);
+    const whatsappFallbackUrl = buildWhatsAppWebUrl(phone, finalMessage);
 
-    if (whatsappWindow) {
-      whatsappWindow.opener = null;
-    }
+    const redirectToWhatsApp = () => {
+      if (whatsappUrl.startsWith("whatsapp://")) {
+        window.location.href = whatsappUrl;
+        return;
+      }
+
+      const opened = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        window.location.href = whatsappUrl;
+      }
+    };
 
     setSendingOrder(true);
 
-    try {
-      const response = await fetch(`${API}/public/orders`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
+    const saveOrder = fetch(`${API}/public/orders`, {
+      method: "POST",
+      keepalive: true,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        customer_first_name: customerData.name,
+        customer_last_name: "",
+        customer_phone: customerData.phone,
+        shipping_address: {
+          city: customerData.zone,
+          label: customerData.zone,
+          phone: customerData.phone
         },
-        body: JSON.stringify({
-          customer_first_name: customerData.name,
-          customer_last_name: "",
-          customer_phone: customerData.phone,
-          shipping_address: {
-            city: customerData.zone,
-            label: customerData.zone,
-            phone: customerData.phone
-          },
-          payment_method: customerData.payment,
-          order_items: orderItems,
-          total_amount: totalAmount,
-          status: "pendiente"
-        })
-      });
+        payment_method: customerData.payment,
+        order_items: orderItems,
+        total_amount: totalAmount,
+        status: "pendiente"
+      })
+    });
 
-      if (!response.ok) throw new Error("No se pudo guardar el pedido");
+    setWhatsappOrderPrompt({
+      fallbackUrl: whatsappFallbackUrl,
+      status: "saving"
+    });
+    setShowCheckout(false);
+    redirectToWhatsApp();
 
-      if (whatsappWindow) {
-        whatsappWindow.location.href = url;
-      } else {
-        window.location.assign(url);
-      }
-
-      actions.clearCart?.();
-      setShowCheckout(false);
+    try {
+      const response = await saveOrder;
+      if (!response.ok) throw new Error(`Error HTTP ${response.status}`);
+      setWhatsappOrderPrompt(prev => prev ? { ...prev, status: "saved" } : prev);
     } catch (err) {
       console.error("Error guardando pedido:", err);
-      if (whatsappWindow) {
-        whatsappWindow.location.href = url;
-      } else {
-        window.location.assign(url);
-      }
-      alert("No se pudo guardar el pedido en el panel. El carrito queda intacto por seguridad.");
+      setWhatsappOrderPrompt(prev => prev
+        ? { ...prev, status: "failed" }
+        : { fallbackUrl: whatsappFallbackUrl, status: "failed" }
+      );
     } finally {
       setSendingOrder(false);
     }
 
   };
-
-
-
-  // ===============================
-  // ABRIR WHATSAPP
-  // ===============================
-
-  const sendToWhatsApp = () => {
-    const phone = "5492645645523"; // ⚠️ CAMBIAR POR EL NÚMERO DEL CLIENTE
-    const text = buildWhatsAppMessage();
-
-    const url = `https://wa.me/${phone}?text=${text}`;
-
-    window.open(url, "_blank");
-  };
-
 
   const [postalCode, setPostalCode] = useState("");
   const [pickup, setPickup] = useState(false);
@@ -595,6 +618,7 @@ Pago: ${customerData.payment}
               placeholder="Nombre y Apellido"
               value={customerData.name}
               onChange={handleCustomerChange}
+              required
               className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 font-serif tracking-wide focus:outline-none focus:border-gray-900"
             />
 
@@ -614,6 +638,7 @@ Pago: ${customerData.payment}
               placeholder="Zona / Localidad"
               value={customerData.zone}
               onChange={handleCustomerChange}
+              required
               className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 font-serif tracking-wide focus:outline-none focus:border-gray-900"
             />
 
@@ -667,6 +692,56 @@ Pago: ${customerData.payment}
                 className="px-4 py-2 bg-[#232325] text-white rounded-lg font-serif tracking-wide hover:bg-black transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {sendingOrder ? "Guardando..." : "Enviar pedido"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {whatsappOrderPrompt && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[210]">
+          <div className="bg-white rounded-lg p-6 w-[90%] max-w-md shadow-xl">
+            <h2 className="text-xl font-serif tracking-wide text-gray-900 mb-3 text-center">
+              ¿Pedido enviado?
+            </h2>
+            <p className="text-sm text-gray-500 font-serif tracking-wide mb-5 text-center">
+              Si WhatsApp no se abrió, podés intentarlo otra vez. Si ya enviaste el mensaje, vaciá el carrito.
+            </p>
+
+            {whatsappOrderPrompt.status === "saving" && (
+              <p className="text-xs text-gray-500 font-serif tracking-wide mb-4 text-center">
+                Guardando el pedido en el panel...
+              </p>
+            )}
+
+            {whatsappOrderPrompt.status === "failed" && (
+              <p className="text-xs text-red-600 font-serif tracking-wide mb-4 text-center">
+                No se pudo guardar en el panel. El carrito sigue intacto.
+              </p>
+            )}
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                onClick={() => setWhatsappOrderPrompt(null)}
+                className="px-4 py-2 border border-gray-300 rounded-lg font-serif tracking-wide hover:bg-gray-100 transition-colors"
+              >
+                Volver
+              </button>
+              <button
+                onClick={() => openWhatsAppFallbackUrl(whatsappOrderPrompt.fallbackUrl)}
+                className="px-4 py-2 border border-gray-300 rounded-lg font-serif tracking-wide hover:bg-gray-100 transition-colors"
+              >
+                Abrir WhatsApp
+              </button>
+              <button
+                onClick={() => {
+                  actions.clearCart?.();
+                  setWhatsappOrderPrompt(null);
+                  setShowCheckout(false);
+                }}
+                className="px-4 py-2 bg-[#232325] text-white rounded-lg font-serif tracking-wide hover:bg-black transition-colors"
+              >
+                Ya envié el pedido
               </button>
             </div>
           </div>
