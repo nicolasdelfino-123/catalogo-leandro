@@ -716,7 +716,7 @@ Pago: ${customerData.payment}
 
             {whatsappOrderPrompt.status === "failed" && (
               <p className="text-xs text-red-600 font-serif tracking-wide mb-4 text-center">
-                No se pudo guardar en el panel. El carrito sigue intacto.
+                Si no enviaste el pedido por WhatsApp, por favor intentá nuevamente.
               </p>
             )}
 
